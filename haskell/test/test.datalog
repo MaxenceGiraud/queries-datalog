@@ -1,0 +1,8 @@
+Film(a,b,c).
+Actor(A) <- Film(_,_,A).
+
+b(X,Y,Z) ← X = Y, a(X X,Z) Z ≠ X ¬ X = 'Bergman l\'auteur du septième sceau'.
+
+!- b(a,X,Y).
+
+
