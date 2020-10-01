@@ -94,6 +94,7 @@ class Clause:
         self.predicate_name = name
         self.args = args
         self.pos = positive
+        self.arity = len(self.args)
 
     def get_predicate(self):
         return self.predicate_name
@@ -215,6 +216,13 @@ class Rule:
 
         self.body = [self.body[i] for i in range(len(self.body)) if i not in equality_idx] ## Remove equalies
 
+    def get_predicate_namesarity(self):
+        predicate_namesarity = [(self.head.predicate_name,self.head.arity)]
+        for c in self.body : 
+            if isinstance(c,Clause):
+                predicate_namesarity.append((c.predicate_name,c.arity))
+
+        return predicate_namesarity
 
     def __repr__(self):
         if self.body == []:
@@ -240,19 +248,30 @@ class Program:
 
 
     def is_rangerestricted(self):
-        #if self.is_CQ():
         for rule in self.rules :
             if not rule.is_rangerestricted():
                 return False
 
         return True
-        #else :return "Not a CQ"
 
     def check_predicate_arity(self):
+
         predicate_arity = dict()
         for r in self.rules:
-            
-            
+            for name,arity in r.get_predicate_namesarity():
+                if name in predicate_arity:
+                    if predicate_arity[name] != arity:
+                        return False
+                else :
+                    predicate_arity[name] = arity
+        
+        return True
+
+    def check_negate_any(self):
+        pass
+
+    def sort_rules(self):
+        pass
 
 
     def is_satisfiable(self):
