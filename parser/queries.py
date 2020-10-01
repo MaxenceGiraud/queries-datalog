@@ -13,25 +13,38 @@ class Any:
 class Var:
     # named variable, with a field var_name with the variable name
     def __init__(self, name):
-        self.var_name = name
+        self.name = name
 
     def get_name(self):
-        return self.var_name
+        return self.name
 
     def __repr__(self):
-        return self.var_name
+        return self.name
+
+    def __eq__(self,other):
+        return (self.name == other.name)
+
+    def __hash__(self):
+        return hash(self.name)
+
 
 
 class Const:
     # Constants with a field const_name containing the name of the constant
     def __init__(self, name):
-        self.const_name = name
+        self.name = name
 
     def get_name(self):
-        return self.const_name
+        return self.name
 
     def __repr__(self):
-        return self.const_name
+        return self.name
+    
+    def __eq__(self,other):
+        return (self.name == other.name)
+    
+    def __hash__(self):
+        return hash(self.name)
 
 
 class Equality:
@@ -39,6 +52,7 @@ class Equality:
     def __init__(self, left, right):
         self.left = left
         self.right = right
+        self.args = [self.left,self.right]
 
     def get_left(self):
         return self.left
@@ -55,6 +69,7 @@ class Different:
     def __init__(self, left, right):
         self.left = left
         self.right = right
+        self.args = [self.left,self.right]
 
     def get_left(self):
         return self.left
@@ -109,25 +124,74 @@ class Rule:
         self.body = body
 
     def get_headvars(self):
-        return self.head.get_vars()
+        return set(self.head.get_vars())
 
     def get_bodyvars(self):
         vars = []
         for clause in self.body:
             vars += clause.get_vars()
-        return vars
-
-    def get_headvars_string(self):
-        return set(str(v) for v in self.head.get_vars())
-
-    def get_bodyvars_string(self):
-        vars = []
-        for clause in self.body:
-            vars += [str(v) for v in clause.get_vars()]
         return set(vars)
+    
+    def get_body_terms(self):
+        terms = []
+        for c in self.body :
+            terms.append(c.args)
+        terms = [[el] for el in set([item for elem in terms for item in elem])]
+        return terms
 
     def is_rangerestricted(self):
-        return self.get_headvars_string() <= self.get_bodyvars_string()
+        return self.get_headvars() <= self.get_bodyvars()
+        '''
+        for term in eq:
+            elif const_nb == 0 :
+                var_pos_classes = self.get_var_in_positive_clauses()
+                for term in eq :
+                    if eq.intersection(var_pos_classes) == set() :
+                        return False      '''
+
+    def get_eqclasses(self):
+        eq = self.get_body_terms()
+
+        for c in self.body :
+            if isinstance(c,Equality):
+                eq.append(set([c.left,c.right]))                   
+
+        return union_find(eq)
+
+    def get_var_in_positive_clauses(self):
+        var_pos_clauses = set()
+        for c in self.body :
+            if isinstance(c,Clause) and c.pos:
+                var_pos_clauses.union(set(c.get_vars()))
+        return var_pos_clauses
+
+    def is_satisfiable(self):
+        eq_cl = self.get_eqclasses()
+        for c in self.body : # Check if negation creates conflicts with eq classes
+            if isinstance(c,Different) :
+                for eq in eq_cl :
+                    if (c.left in eq) and (c.right in eq) :
+                        return False
+        
+        # Check if no 2 constants in the same eq class
+        for eq in eq_cl :
+            const_nb = 0
+            for term in eq :
+                if isinstance(term,Const):
+                    const_nb+=1
+            if const_nb > 1 :
+                return False
+        return True
+
+    def remove_equalities(self):
+        eq_cl = self.get_eqclasses()
+        repr_eq_classes = get_repr_eq_classes(eq_cl)
+        for c in self.body:
+            if isinstance(c,Equality):
+                pass #pop it out
+            elif isinstance(c,Clause):
+                pass # replace with repr
+        pass
 
     def __repr__(self):
         if self.body == []:
@@ -160,8 +224,19 @@ class Program:
 
             return True
         else :
-            return False
+            return "Not a CQ"
 
+    def is_satisfiable(self):
+        for r in self.rules :
+            if not r.is_satisfiable():
+                return False
+        return True
+    
+    def remove_equalities(self):
+        if self.is_satisfiable():
+            pass
+        else :
+            return "Not satisfiable"
 
 
 
@@ -182,6 +257,38 @@ class Query:
     def is_rangerestricted(self):
         return self.program.is_rangerestricted()
 
+    def is_satisfiable(self):
+        return self.program.is_satisfiable()
+
+    def remove_equalities(self):
+        return self.program.remove_equalities()
+
 
     def __repr__(self):
         return self.program.__repr__() + "\n? " + self.query.__repr__()
+
+
+def union_find(lis):
+    lis = map(set, lis)
+    unions = []
+    for item in lis:
+        temp = []
+        for s in unions:
+            if not s.isdisjoint(item):
+                item = s.union(item)
+            else:
+                temp.append(s)
+        temp.append(item)
+        unions = temp
+    return unions
+
+def get_repr_eq_classes(eq_classes):
+    repr = []
+    for i in range(len(eq_classes)) :
+        for term in eq_classes[i] :
+            if isinstance(term,Const):
+                repr.append(term)
+        if len(repr) < i+1 :
+            repr.append(list(eq_classes[i])[0])
+            
+    return repr
