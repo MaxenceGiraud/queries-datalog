@@ -27,6 +27,9 @@ class Var:
     def __hash__(self):
         return hash(self.name)
 
+    def __str__(self):
+        return str(self.name)
+
 
 
 class Const:
@@ -45,6 +48,9 @@ class Const:
     
     def __hash__(self):
         return hash(self.name)
+
+    def __str__(self):
+        return str(self.name)
 
 
 class Equality:
@@ -128,8 +134,8 @@ class Rule:
 
     def get_bodyvars(self):
         vars = []
-        for clause in self.body:
-            vars += clause.get_vars()
+        for c in self.body:
+            vars += c.args
         return set(vars)
     
     def get_body_terms(self):
@@ -140,14 +146,23 @@ class Rule:
         return terms
 
     def is_rangerestricted(self):
-        return self.get_headvars() <= self.get_bodyvars()
-        '''
-        for term in eq:
-            elif const_nb == 0 :
+        # Check if all var in body are also in head
+        if not (self.get_headvars() <= self.get_bodyvars()):
+            return False
+
+        # Check if either in each eq classes, there is : 1 constant of 1 var contained in a positive clause
+        eq_cl = self.get_eqclasses()
+
+        for eq in eq_cl :
+            const = False
+            for term in eq :
+                if isinstance(term,Const):
+                    const = True
+            if not const :
                 var_pos_classes = self.get_var_in_positive_clauses()
-                for term in eq :
-                    if eq.intersection(var_pos_classes) == set() :
-                        return False      '''
+                if eq.intersection(var_pos_classes) == set() :
+                    return False      
+        return True
 
     def get_eqclasses(self):
         eq = self.get_body_terms()
@@ -159,10 +174,11 @@ class Rule:
         return union_find(eq)
 
     def get_var_in_positive_clauses(self):
+        ''' Get all the variables from all the positive clauses'''
         var_pos_clauses = set()
         for c in self.body :
             if isinstance(c,Clause) and c.pos:
-                var_pos_clauses.union(set(c.get_vars()))
+                var_pos_clauses = var_pos_clauses.union(set(c.get_vars()))
         return var_pos_clauses
 
     def is_satisfiable(self):
@@ -186,12 +202,19 @@ class Rule:
     def remove_equalities(self):
         eq_cl = self.get_eqclasses()
         repr_eq_classes = get_repr_eq_classes(eq_cl)
-        for c in self.body:
-            if isinstance(c,Equality):
-                pass #pop it out
-            elif isinstance(c,Clause):
-                pass # replace with repr
-        pass
+        equality_idx = []
+        for i in range(len(self.body)):
+            if isinstance(self.body[i],Equality):
+                equality_idx.append(i)
+            elif isinstance(self.body[i],Clause): # Replace var in body clauses by representant of eq class
+                for j in range(len(self.body[i].args)):
+                    self.body[i].args[j] = repr_eq_classes[str(self.body[i].args[j])] 
+
+        for i in range(len(self.head.args)): # Replace var in head by representant of eq class
+                    self.head.args[i] = repr_eq_classes[str(self.head.args[i])] 
+
+        self.body = [self.body[i] for i in range(len(self.body)) if i not in equality_idx] ## Remove equalies
+
 
     def __repr__(self):
         if self.body == []:
@@ -217,14 +240,20 @@ class Program:
 
 
     def is_rangerestricted(self):
-        if self.is_CQ():
-            for rule in self.rules :
-                if not rule.is_rangerestricted():
-                    return False
+        #if self.is_CQ():
+        for rule in self.rules :
+            if not rule.is_rangerestricted():
+                return False
 
-            return True
-        else :
-            return "Not a CQ"
+        return True
+        #else :return "Not a CQ"
+
+    def check_predicate_arity(self):
+        predicate_arity = dict()
+        for r in self.rules:
+            
+            
+
 
     def is_satisfiable(self):
         for r in self.rules :
@@ -234,10 +263,10 @@ class Program:
     
     def remove_equalities(self):
         if self.is_satisfiable():
-            pass
+            for r in self.rules :
+                r.remove_equalities()
         else :
             return "Not satisfiable"
-
 
 
     def __repr__(self):
@@ -283,12 +312,21 @@ def union_find(lis):
     return unions
 
 def get_repr_eq_classes(eq_classes):
+    '''Get representant of an equivalent class
+    -either the constant is chosen or a random var
+    output a dict
+    '''
     repr = []
+    dict_repr = dict()
     for i in range(len(eq_classes)) :
         for term in eq_classes[i] :
             if isinstance(term,Const):
                 repr.append(term)
         if len(repr) < i+1 :
             repr.append(list(eq_classes[i])[0])
+
+        for term in eq_classes[i] :
+            dict_repr[str(term)] = repr[i]
+
             
-    return repr
+    return dict_repr
