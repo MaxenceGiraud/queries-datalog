@@ -1,0 +1,1 @@
+b(X,Y,Z) ← b(X,a,Z) c(X,b) X=Z, Y=a, B=b.
