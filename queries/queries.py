@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import numpy as np
 
 class Any:
     # unnamed variable
@@ -174,9 +174,19 @@ class Rule:
 
         for c in self.body :
             if isinstance(c,Equality):
-                eq.append(set([c.left,c.right]))                   
-
+                eq.append(set([c.left,c.right]))   
+        
         return union_find(eq)
+
+    def get_predicates(self):
+        pred_list_body = []
+        pred_head = self.head.get_predicate()
+        for c in self.body : 
+            if isinstance(c,Clause)  :
+                pred_list_body.append(c.get_predicate())
+    
+        return pred_head,pred_list_body
+
 
     def get_var_in_positive_clauses(self):
         ''' Get all the variables from all the positive clauses'''
@@ -296,8 +306,54 @@ class Program:
 
     def sort_rules(self):
         ''' Sort the rules in order to solver the program'''
-        pass
+        ## Get all the predicates name from the head and body of all the rules
+        head_pred_list = []
+        body_pred_list = []
+        for rule in self.rules:
+            head_pred,body_pred = rule.get_predicates()
+            head_pred_list.append(head_pred)
+            [body_pred_list.append(body_pred_i) for  body_pred_i in body_pred ]       
+        
+        ## Find all the rules that need to be moved
+        rules_to_rearrange = []
+        for i in range(len(self.rules)):
+            for j in range(len(self.rules)):
+                if head_pred_list[i] == body_pred_list[j] and j > i :
+                    rules_to_rearrange.append((j,i))
+        
+        ## Find out the new order of the rules
+        new_idx = []
+        if rules_to_rearrange != []:
+            new_idx.append(rules_to_rearrange[0][0])
+            new_idx.append(rules_to_rearrange[0][1])
+            for j,i in rules_to_rearrange[1:] : 
+                if j in new_idx :
+                    j_loc = np.where(np.array(new_idx)==j)[0][0]
+                    if i in new_idx :
+                        i_loc = np.where(np.array(new_idx)==i)[0][0]
+                        if j_loc >  i_loc: #if rule not already satisfied 
+                            ## Put j in new_idx before i 
+                            new_idx  = new_idx[:i_loc]+[new_idx[j_loc]]+new_idx[i_loc:j_loc]+new_idx[j_loc+1:]
+                    else : 
+                        ## Put the i after the j already in new_idx
+                        new_idx  = new_idx[:j_loc+1]+[i]+new_idx[j_loc+1:]
+                elif i in new_idx:
+                    i_loc = np.where(np.array(new_idx)==i)[0][0]
+                    # Put the j before the i already in new_idx 
+                    new_idx  = new_idx[:i_loc]+[j]+new_idx[i_loc:]
+                    
+                else :
+                    new_idx.append(j)
+                    new_idx.append(i)
+            
+            ## Moves the rules according to the previously created list
+            new_rules = list(np.array(self.rules)[new_idx])
 
+            for k in range(len(self.rules)):
+                if k not in set([ item for elem in rules_to_rearrange for item in elem]) :
+                    new_rules.append(self.rules[k])
+
+            self.rules = new_rules        
 
     def is_satisfiable(self):
         '''Check if the program is satisfiable '''
@@ -314,7 +370,6 @@ class Program:
                 r.remove_equalities()
         else :
             return "Not satisfiable"
-
 
     def __repr__(self):
         return "\n".join([rule.__repr__() for rule in self.rules])

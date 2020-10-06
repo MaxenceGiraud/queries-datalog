@@ -1,5 +1,6 @@
 import unittest
 import queries
+import numpy as np
 
 '''Careful : This test file is meant to be run at the root of the project'''
 
@@ -77,7 +78,7 @@ class ProgramTestCase(unittest.TestCase):
         self.assertTrue(q.check_no_negate_any())
     
     def test_changingpredicatearity(self):
-        file = self.folder_test+"safe.query"
+        file = self.folder_test+"aritypredicatechanging.query"
         q = queries.program_parse_file(file)
         self.assertFalse(q.check_predicate_arity())
     
@@ -97,7 +98,23 @@ class ProgramTestCase(unittest.TestCase):
         file = self.folder_test+"inconsistent2.query"
         q = queries.program_parse_file(file)
         self.assertTrue(q.check_predicate_arity())
+
+    def test_sort_rule_simple(self):
+        file = self.folder_test+"rulestosort.query"
+        q = queries.query_parse_file(file)
+        q_rules = q.program.rules
+
+        q.sort_rules()
+
+        self.assertTrue(np.all(np.array(q.program.rules)==np.array(q_rules)[[1,0,2]]))
             
+    def test_sort_rule_complex(self):
+        file = self.folder_test+"complexrulessort.query"
+        q = queries.query_parse_file(file)
+        q_rules = q.program.rules
+        q.sort_rules()
+
+        self.assertTrue(np.all(np.array(q.program.rules)==np.array(q_rules)[[4,1,0,3,2,5]]))
 
 if __name__ == '__main__':
     unittest.main()
