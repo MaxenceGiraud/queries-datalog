@@ -1,0 +1,2 @@
+q(X) ← b(Z) Y=Z X=Z.
+q(X) ← b(Z,a) Y=Z X=Z.

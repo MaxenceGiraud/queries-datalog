@@ -134,12 +134,14 @@ class Rule:
         return set(self.head.get_vars())
 
     def get_bodyvars(self):
+        '''Return all the variables contained in the body'''
         vars = []
         for c in self.body:
             vars += c.args
         return set(vars)
     
     def get_body_terms(self):
+        '''Return all the terms (variable+constants) contained in the body'''
         terms = []
         for c in self.body :
             terms.append(c.args)
@@ -147,6 +149,7 @@ class Rule:
         return terms
 
     def is_rangerestricted(self):
+        '''Check if the rule is range restricted /safe'''
         # Check if all var in body are also in head
         if not (self.get_headvars() <= self.get_bodyvars()):
             return False
@@ -166,6 +169,7 @@ class Rule:
         return True
 
     def get_eqclasses(self):
+        ''' Return all th equivalence classes in the rule'''
         eq = self.get_body_terms()
 
         for c in self.body :
@@ -183,6 +187,7 @@ class Rule:
         return var_pos_clauses
 
     def is_satisfiable(self):
+        '''Check if the rule is satisfiable '''
         eq_cl = self.get_eqclasses()
         for c in self.body : # Check if negation creates conflicts with eq classes
             if isinstance(c,Different) :
@@ -201,6 +206,7 @@ class Rule:
         return True
 
     def remove_equalities(self):
+        ''' Remove all the equalities and replace the var by the representant of their equivalence classes'''
         eq_cl = self.get_eqclasses()
         repr_eq_classes = get_repr_eq_classes(eq_cl)
         equality_idx = []
@@ -217,12 +223,23 @@ class Rule:
         self.body = [self.body[i] for i in range(len(self.body)) if i not in equality_idx] ## Remove equalies
 
     def get_predicate_namesarity(self):
+        ''' Return a dict containing the arity of each predicate'''
         predicate_namesarity = [(self.head.predicate_name,self.head.arity)]
         for c in self.body : 
             if isinstance(c,Clause):
                 predicate_namesarity.append((c.predicate_name,c.arity))
 
         return predicate_namesarity
+
+    def check_no_negate_any(self):
+        '''Check if a negation of any is stated in the rule :
+        Return False if it is, True if not'''
+        for c in self.body:
+            if isinstance(c,Clause) and c.is_negative():
+                for arg in c.args :
+                    if isinstance(arg,Any):
+                        return False
+        return True
 
     def __repr__(self):
         if self.body == []:
@@ -237,8 +254,10 @@ class Program:
     # Programs are a non empty list of rules
     def __init__(self, rules):
         self.rules = rules
+        #assert not self.check_predicate_arity(), "Same predicate have several different arities" #-> when a program is parsed __init__ is called multiple times
 
     def is_CQ(self):
+        ''' Check if program is CQ'''
         for rule in self.rules :
             for clause in rule.body :
                 if isinstance(clause,Equality)  or  isinstance(clause,Different):
@@ -248,6 +267,7 @@ class Program:
 
 
     def is_rangerestricted(self):
+        '''Check if the program is range restricted /safe'''
         for rule in self.rules :
             if not rule.is_rangerestricted():
                 return False
@@ -255,7 +275,7 @@ class Program:
         return True
 
     def check_predicate_arity(self):
-
+        '''Check if the arity of each predicate does not change'''
         predicate_arity = dict()
         for r in self.rules:
             for name,arity in r.get_predicate_namesarity():
@@ -264,23 +284,30 @@ class Program:
                         return False
                 else :
                     predicate_arity[name] = arity
-        
         return True
 
-    def check_negate_any(self):
-        pass
+    def check_no_negate_any(self):
+        '''Check if a negation of any is stated in the program :
+        Return False if it is, True if not'''
+        for rule in self.rules:
+            if not rule.check_no_negate_any():
+                return False
+        return True
 
     def sort_rules(self):
         pass
 
 
     def is_satisfiable(self):
+        '''Check if the program is satisfiable '''
         for r in self.rules :
             if not r.is_satisfiable():
                 return False
         return True
     
     def remove_equalities(self):
+        ''' Remove all the equalities of all the rulesand replace the var by the representant of their equivalence classes'''
+
         if self.is_satisfiable():
             for r in self.rules :
                 r.remove_equalities()
@@ -300,16 +327,29 @@ class Query:
         self.query = query
 
     def is_CQ(self):
+        ''' Check if query is CQ'''
         return self.program.is_CQ()
 
     def is_rangerestricted(self):
+        ''' Check if query is range restricted/safe'''
         return self.program.is_rangerestricted()
 
     def is_satisfiable(self):
+        ''' Check if query is satisfiable'''
         return self.program.is_satisfiable()
 
     def remove_equalities(self):
+        ''' Remove all the equalities and replace the var by the representant of their equivalence classes'''
         return self.program.remove_equalities()
+    
+    def check_no_negate_any(self):
+        '''Check if a negation of any is stated in the program :
+        Return False if it is, True if not'''
+        return self.program.check_no_negate_any()
+    
+    def check_predicate_arity(self):
+        '''Check if the arity of each predicate does not change'''
+        return self.program.check_predicate_arity()
 
 
     def __repr__(self):
