@@ -295,6 +295,7 @@ class Program:
         return True
 
     def sort_rules(self):
+        ''' Sort the rules in order to solver the program'''
         pass
 
 
@@ -351,6 +352,9 @@ class Query:
         '''Check if the arity of each predicate does not change'''
         return self.program.check_predicate_arity()
 
+    def sort_rules(self):
+        ''' Sort the rules in order to solver the query'''
+        self.program.sort_rules()
 
     def __repr__(self):
         return self.program.__repr__() + "\n? " + self.query.__repr__()
