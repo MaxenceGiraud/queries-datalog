@@ -91,7 +91,7 @@ class Clause:
     # Clause with a predicate name, the list of terms (args), and whether it is
     # negated or not.
     def __init__(self, name, args, positive):
-        self.predicate_name = name
+        self.predicate_name = str(name)
         self.args = args
         self.pos = positive
         self.arity = len(self.args)
@@ -147,27 +147,14 @@ class Rule:
             terms.append(c.args)
         terms = [[el] for el in set([item for elem in terms for item in elem])]
         return terms
-
+    
     def is_rangerestricted(self):
         '''Check if the rule is range restricted /safe'''
-        # Check if all var in body are also in head
-        if not (self.get_headvars() <= self.get_bodyvars()):
-            return False
-
-        # Check if either in each eq classes, there is : 1 constant of 1 var contained in a positive clause
-        eq_cl = self.get_eqclasses()
-
-        for eq in eq_cl :
-            const = False
-            for term in eq :
-                if isinstance(term,Const):
-                    const = True
-            if not const :
-                var_pos_classes = self.get_var_in_positive_clauses()
-                if eq.intersection(var_pos_classes) == set() :
-                    return False      
-        return True
-
+        #Check if all var in body are also in head
+        return self.get_headvars() <= self.get_bodyvars() and \
+         any([any([isinstance(term,Const) for term in eq]) or not len(eq.intersection(self.get_var_in_positive_clauses())) for eq in self.get_eqclasses()])
+        # And Check if either in each eq classes, there is : 1 constant of 1 var contained in a positive clause      
+                
     def get_eqclasses(self):
         ''' Return all th equivalence classes in the rule'''
         eq = self.get_body_terms()
@@ -177,6 +164,9 @@ class Rule:
                 eq.append(set([c.left,c.right]))   
         
         return union_find(eq)
+    
+    def create_eqclasses(self):
+        self.eq_classes = self.get_eqclasses()
 
     def get_predicates(self):
         pred_list_body = []
@@ -215,10 +205,14 @@ class Rule:
                 return False
         return True
 
-    def remove_equalities(self):
+    def get_remove_equalities(self):
         ''' Remove all the equalities and replace the var by the representant of their equivalence classes'''
         eq_cl = self.get_eqclasses()
         repr_eq_classes = get_repr_eq_classes(eq_cl)
+
+        # new_body = [Clause(cl.positive,[repr_eq_classes(x) for x in cl.args]) 
+        #             for cl in self.body if  isinstance(cl,Clause)] +
+        #             [] 
         equality_idx = []
         for i in range(len(self.body)):
             if isinstance(self.body[i],Equality):
@@ -231,6 +225,10 @@ class Rule:
                     self.head.args[i] = repr_eq_classes[str(self.head.args[i])] 
 
         self.body = [self.body[i] for i in range(len(self.body)) if i not in equality_idx] ## Remove equalies
+    
+    # def remove_equalities(self):
+    #     self.head,self.body = self.get_remove_equalities()
+
 
     def get_predicate_namesarity(self):
         ''' Return a dict containing the arity of each predicate'''
@@ -304,56 +302,8 @@ class Program:
                 return False
         return True
 
-    def sort_rules(self):
-        ''' Sort the rules in order to solver the program'''
-        ## Get all the predicates name from the head and body of all the rules
-        head_pred_list = []
-        body_pred_list = []
-        for rule in self.rules:
-            head_pred,body_pred = rule.get_predicates()
-            head_pred_list.append(head_pred)
-            [body_pred_list.append(body_pred_i) for  body_pred_i in body_pred ]       
-        
-        ## Find all the rules that need to be moved
-        rules_to_rearrange = []
-        for i in range(len(self.rules)):
-            for j in range(len(self.rules)):
-                if head_pred_list[i] == body_pred_list[j] and j > i :
-                    rules_to_rearrange.append((j,i))
-        
-        ## Find out the new order of the rules
-        new_idx = []
-        if rules_to_rearrange != []:
-            new_idx.append(rules_to_rearrange[0][0])
-            new_idx.append(rules_to_rearrange[0][1])
-            for j,i in rules_to_rearrange[1:] : 
-                if j in new_idx :
-                    j_loc = np.where(np.array(new_idx)==j)[0][0]
-                    if i in new_idx :
-                        i_loc = np.where(np.array(new_idx)==i)[0][0]
-                        if j_loc >  i_loc: #if rule not already satisfied 
-                            ## Put j in new_idx before i 
-                            new_idx  = new_idx[:i_loc]+[new_idx[j_loc]]+new_idx[i_loc:j_loc]+new_idx[j_loc+1:]
-                    else : 
-                        ## Put the i after the j already in new_idx
-                        new_idx  = new_idx[:j_loc+1]+[i]+new_idx[j_loc+1:]
-                elif i in new_idx:
-                    i_loc = np.where(np.array(new_idx)==i)[0][0]
-                    # Put the j before the i already in new_idx 
-                    new_idx  = new_idx[:i_loc]+[j]+new_idx[i_loc:]
-                    
-                else :
-                    new_idx.append(j)
-                    new_idx.append(i)
-            
-            ## Moves the rules according to the previously created list
-            new_rules = list(np.array(self.rules)[new_idx])
-
-            for k in range(len(self.rules)):
-                if k not in set([ item for elem in rules_to_rearrange for item in elem]) :
-                    new_rules.append(self.rules[k])
-
-            self.rules = new_rules        
+    def is_recursive(self):
+        pass        
 
     def is_satisfiable(self):
         '''Check if the program is satisfiable '''
@@ -406,10 +356,38 @@ class Query:
     def check_predicate_arity(self):
         '''Check if the arity of each predicate does not change'''
         return self.program.check_predicate_arity()
+  
+    def is_recursive(self):
+        pass
 
     def sort_rules(self):
-        ''' Sort the rules in order to solver the query'''
-        self.program.sort_rules()
+        ''' Sort the rules/predicates in order to solver the query'''
+        # Create dependencies graph
+        dependencies = {}
+        for r in  self.program.rules :
+            head_pred,body_pred = r.get_predicates()
+            dependencies.setdefault(head_pred,[]).extend(body_pred)
+            [dependencies.setdefault(p,[]) for p in  body_pred]
+        # Init the states
+        states = {p:'white' for p in dependencies}
+        start = self.query.get_predicate()
+        
+        # Resolve the graph problem/ sort the predicates
+        def sort_graph(dependencies,states,node,sorted_list):
+            if not dependencies[node]:
+                sorted_list.append(node)
+                states[node] = "red"
+            else : 
+                states[node] = "blue"
+                for n in dependencies[node]:
+                    if states[n] == "blue":
+                        raise Exception("The Query is recursive")
+                    sorted_list = sort_graph(dependencies,states,n,sorted_list)
+                sorted_list.append(node)
+            return sorted_list
+
+        predicate_sorted = sort_graph(dependencies,states,start,[])
+        return predicate_sorted
 
     def __repr__(self):
         return self.program.__repr__() + "\n? " + self.query.__repr__()
