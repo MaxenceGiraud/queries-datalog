@@ -102,19 +102,16 @@ class ProgramTestCase(unittest.TestCase):
     def test_sort_rule_simple(self):
         file = self.folder_test+"rulestosort.query"
         q = queries.query_parse_file(file)
-        q_rules = q.program.rules
+        sorted_rules = q.sort_rules()
 
-        q.sort_rules()
-
-        self.assertTrue(np.all(np.array(q.program.rules)==np.array(q_rules)[[1,0,2]]))
+        self.assertListEqual(sorted_rules,['f', 'q'])
             
-    def test_sort_rule_complex(self):
+    def test_sort_rule2(self):
         file = self.folder_test+"complexrulessort.query"
         q = queries.query_parse_file(file)
-        q_rules = q.program.rules
-        q.sort_rules()
+        sorted_rules = q.sort_rules()
 
-        self.assertTrue(np.all(np.array(q.program.rules)==np.array(q_rules)[[4,1,0,3,2,5]]))
+        self.assertListEqual(sorted_rules,['f', 'q'])
 
 if __name__ == '__main__':
     unittest.main()

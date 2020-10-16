@@ -150,9 +150,9 @@ class Rule:
     
     def is_rangerestricted(self):
         '''Check if the rule is range restricted /safe'''
-        #Check if all var in body are also in head
+        #Check if all var in head are also in Body
         return self.get_headvars() <= self.get_bodyvars() and \
-         any([any([isinstance(term,Const) for term in eq]) or not len(eq.intersection(self.get_var_in_positive_clauses())) for eq in self.get_eqclasses()])
+         all([any([isinstance(term,Const) for term in eq]) or len(eq.intersection(self.get_var_in_positive_clauses())) for eq in self.get_eqclasses()])
         # And Check if either in each eq classes, there is : 1 constant of 1 var contained in a positive clause      
                 
     def get_eqclasses(self):
