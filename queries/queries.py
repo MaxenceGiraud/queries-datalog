@@ -22,7 +22,7 @@ class Var:
         return self.name
 
     def __eq__(self,other):
-        return (self.name == other.name)
+        return str(self) == str(other)
 
     def __hash__(self):
         return hash(self.name)
@@ -44,7 +44,7 @@ class Const:
         return self.name
     
     def __eq__(self,other):
-        return (self.name == other.name)
+        return str(self) == str(other)
     
     def __hash__(self):
         return hash(self.name)
@@ -210,24 +210,16 @@ class Rule:
         eq_cl = self.get_eqclasses()
         repr_eq_classes = get_repr_eq_classes(eq_cl)
 
-        # new_body = [Clause(cl.positive,[repr_eq_classes(x) for x in cl.args]) 
-        #             for cl in self.body if  isinstance(cl,Clause)] +
-        #             [] 
-        equality_idx = []
-        for i in range(len(self.body)):
-            if isinstance(self.body[i],Equality):
-                equality_idx.append(i)
-            elif isinstance(self.body[i],Clause): # Replace var in body clauses by representant of eq class
-                for j in range(len(self.body[i].args)):
-                    self.body[i].args[j] = repr_eq_classes[str(self.body[i].args[j])] 
+        new_body = [Clause(cl.predicate_name,[repr_eq_classes[x] for x in cl.args],cl.pos) \
+                for cl in self.body if  isinstance(cl,Clause)] + \
+                [Different(repr_eq_classes(diff.left),repr_eq_classes(diff.right)) for diff in self.body if isinstance(diff,Different)] 
 
-        for i in range(len(self.head.args)): # Replace var in head by representant of eq class
-                    self.head.args[i] = repr_eq_classes[str(self.head.args[i])] 
+        new_head = Clause(self.head.predicate_name,[repr_eq_classes[x] for x in self.head.args],self.head.pos) 
 
-        self.body = [self.body[i] for i in range(len(self.body)) if i not in equality_idx] ## Remove equalies
-    
-    # def remove_equalities(self):
-    #     self.head,self.body = self.get_remove_equalities()
+        return new_head,new_body
+
+    def remove_equalities(self):
+        self.head,self.body = self.get_remove_equalities()
 
 
     def get_predicate_namesarity(self):
