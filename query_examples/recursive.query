@@ -1,0 +1,5 @@
+a(X) ← b(a).
+e(X) ← a(X).
+b(X) ← e(a) h(a).
+q(X) ← e(a).
+? q(a,X,Y)

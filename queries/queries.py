@@ -254,7 +254,6 @@ class Program:
     # Programs are a non empty list of rules
     def __init__(self, rules):
         self.rules = rules
-        #assert not self.check_predicate_arity(), "Same predicate have several different arities" #-> when a program is parsed __init__ is called multiple times
 
     def is_CQ(self):
         ''' Check if program is CQ'''

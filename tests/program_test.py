@@ -112,6 +112,11 @@ class ProgramTestCase(unittest.TestCase):
         sorted_rules = q.sort_rules()
 
         self.assertListEqual(sorted_rules,['f', 'q'])
+    
+    def test_recursive_program(self):
+        file = self.folder_test+"recursive.query"
+        q = queries.query_parse_file(file)
+        self.assertRaises(Exception,q.sort_rules)
 
 if __name__ == '__main__':
     unittest.main()
