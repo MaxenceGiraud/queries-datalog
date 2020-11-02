@@ -182,3 +182,4 @@ dmypy.json
 # Ignore all local history of files
 .history
 lab.py
+lab.py

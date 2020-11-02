@@ -4,4 +4,4 @@ r(X) ← p(Y).
 u(X) ← r(b).
 o(X) ← e(t).
 q(X) ← f(a).
-? q(a,X,Y)
+? q(a)

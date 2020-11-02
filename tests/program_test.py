@@ -102,14 +102,14 @@ class ProgramTestCase(unittest.TestCase):
     def test_sort_rule_simple(self):
         file = self.folder_test+"rulestosort.query"
         q = queries.query_parse_file(file)
-        sorted_rules = q.sort_rules()
+        sorted_rules = q.get_sorted_predicate()
 
         self.assertListEqual(sorted_rules,['f', 'q'])
             
     def test_sort_rule2(self):
         file = self.folder_test+"complexrulessort.query"
         q = queries.query_parse_file(file)
-        sorted_rules = q.sort_rules()
+        sorted_rules = q.get_sorted_predicate()
 
         self.assertListEqual(sorted_rules,['f', 'q'])
     

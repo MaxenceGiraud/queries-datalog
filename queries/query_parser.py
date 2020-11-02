@@ -13,7 +13,7 @@ UPPER: /[A-Z]/
 LOWER: /[a-z]/
 SYMBOLS: /[a-zA-Z0-9\-_]/
 VAR: UPPER SYMBOLS*
-NAME: LOWER SYMBOLS* | /'([^']|\')+'/ | /"([^"]|\")+"/
+NAME: LOWER SYMBOLS* | /'([^']|\\\')+'/ | /"([^"]|\\\")+"/
 ANY: "_"
 NEQ: "<>" | "~=" | "!=" | "≠"
 

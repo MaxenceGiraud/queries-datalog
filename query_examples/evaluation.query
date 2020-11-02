@@ -1,0 +1,10 @@
+a("Bergman l'auteur").
+a("Goldman").
+a("Man").
+b(b).
+b(d).
+e(c).
+e(b).
+e(e).
+q(X) ← a(a).
+? q(X)
