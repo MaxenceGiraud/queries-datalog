@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from operator import xor
+from itertools import combinations
 
 class Any:
     # unnamed variable
@@ -42,10 +44,10 @@ class Const:
 
     def __repr__(self):
         return self.name
-    
+
     def __eq__(self,other):
         return str(self) == str(other)
-    
+
     def __hash__(self):
         return hash(self.name)
 
@@ -139,7 +141,7 @@ class Rule:
         for c in self.body:
             vars += c.args
         return set(vars)
-    
+
     def get_body_terms(self):
         '''Return all the terms (variable+constants) contained in the body'''
         terms = []
@@ -147,34 +149,35 @@ class Rule:
             terms.append(c.args)
         terms = [[el] for el in set([item for elem in terms for item in elem])]
         return terms
-    
+
     def is_rangerestricted(self):
         '''Check if the rule is range restricted /safe'''
         #Check if all var in head are also in Body
         return self.get_headvars() <= self.get_bodyvars() and \
          all([any([isinstance(term,Const) for term in eq]) or len(eq.intersection(self.get_var_in_positive_clauses())) for eq in self.get_eqclasses()])
-        # And Check if either in each eq classes, there is : 1 constant of 1 var contained in a positive clause      
-                
+        # And Check if either in each eq classes, there is : 1 constant of 1 var contained in a positive clause
+
     def get_eqclasses(self):
-        ''' Return all th equivalence classes in the rule'''
-        eq = self.get_body_terms()
+        ''' Return all the equivalence classes in the rule'''
+        eq = self.get_body_terms() + [self.head.args]
 
         for c in self.body :
             if isinstance(c,Equality):
-                eq.append(set([c.left,c.right]))   
-        
+                eq.append(set([c.left,c.right]))
+
         return union_find(eq)
-    
+
     def create_eqclasses(self):
         self.eq_classes = self.get_eqclasses()
 
     def get_predicates(self):
+        "Get the prediates from both head and body"
         pred_list_body = []
         pred_head = self.head.get_predicate()
-        for c in self.body : 
+        for c in self.body :
             if isinstance(c,Clause)  :
                 pred_list_body.append(c.get_predicate())
-    
+
         return pred_head,pred_list_body
 
 
@@ -194,7 +197,7 @@ class Rule:
                 for eq in eq_cl :
                     if (c.left in eq) and (c.right in eq) :
                         return False
-        
+
         # Check if no 2 constants in the same eq class
         for eq in eq_cl :
             const_nb = 0
@@ -212,9 +215,9 @@ class Rule:
 
         new_body = [Clause(cl.predicate_name,[repr_eq_classes[x] for x in cl.args],cl.pos) \
                 for cl in self.body if  isinstance(cl,Clause)] + \
-                [Different(repr_eq_classes(diff.left),repr_eq_classes(diff.right)) for diff in self.body if isinstance(diff,Different)] 
+                [Different(repr_eq_classes(diff.left),repr_eq_classes(diff.right)) for diff in self.body if isinstance(diff,Different)]
 
-        new_head = Clause(self.head.predicate_name,[repr_eq_classes[x] for x in self.head.args],self.head.pos) 
+        new_head = Clause(self.head.predicate_name,[repr_eq_classes[x] for x in self.head.args],self.head.pos)
 
         return new_head,new_body
 
@@ -225,7 +228,7 @@ class Rule:
     def get_predicate_namesarity(self):
         ''' Return a dict containing the arity of each predicate'''
         predicate_namesarity = [(self.head.predicate_name,self.head.arity)]
-        for c in self.body : 
+        for c in self.body :
             if isinstance(c,Clause):
                 predicate_namesarity.append((c.predicate_name,c.arity))
 
@@ -294,7 +297,7 @@ class Program:
         return True
 
     def is_recursive(self):
-        pass        
+        pass
 
     def is_satisfiable(self):
         '''Check if the program is satisfiable '''
@@ -302,7 +305,7 @@ class Program:
             if not r.is_satisfiable():
                 return False
         return True
-    
+
     def remove_equalities(self):
         ''' Remove all the equalities of all the rulesand replace the var by the representant of their equivalence classes'''
 
@@ -338,21 +341,19 @@ class Query:
     def remove_equalities(self):
         ''' Remove all the equalities and replace the var by the representant of their equivalence classes'''
         return self.program.remove_equalities()
-    
+
     def check_no_negate_any(self):
         '''Check if a negation of any is stated in the program :
         Return False if it is, True if not'''
         return self.program.check_no_negate_any()
-    
+
     def check_predicate_arity(self):
         '''Check if the arity of each predicate does not change'''
         return self.program.check_predicate_arity()
-  
-    def is_recursive(self):
-        pass
 
-    def sort_rules(self):
-        ''' Sort the rules/predicates in order to solver the query'''
+
+    def get_sorted_predicate(self):
+        ''' Sort the rules/predicates in order to solve the query'''
         # Create dependencies graph
         dependencies = {}
         for r in  self.program.rules :
@@ -362,13 +363,14 @@ class Query:
         # Init the states
         states = {p:'white' for p in dependencies}
         start = self.query.get_predicate()
-        
+
         # Resolve the graph problem/ sort the predicates
         def sort_graph(dependencies,states,node,sorted_list):
-            if not dependencies[node]:
-                sorted_list.append(node)
-                states[node] = "red"
-            else : 
+            if not dependencies[node] :
+                if states[node] != "red" :
+                    sorted_list.append(node)
+                    states[node] = "red"
+            else :
                 states[node] = "blue"
                 for n in dependencies[node]:
                     if states[n] == "blue":
@@ -379,6 +381,57 @@ class Query:
 
         predicate_sorted = sort_graph(dependencies,states,start,[])
         return predicate_sorted
+
+    def sort_rules(self):
+        pred_sorted = self.get_sorted_predicate()
+        self.program.rules = [rule for pred in pred_sorted for rule in self.program.rules if pred == rule.head.get_predicate()]
+
+    def evaluate(self):
+        ## Assertion of evaluation possibility
+        assert self.is_satisfiable(), "Query is not satisfiable"
+        assert self.check_predicate_arity(), "Arity of a predicate is not constant everywhere in the query "
+        assert self.check_no_negate_any(), "A negation of any can't been found"
+        assert self.is_rangerestricted(), "The Query is not safe"
+
+        # Prepare the query to be evaluated
+        self.remove_equalities()
+        self.sort_rules()
+
+        # Evalutation
+        values = dict()
+        for r in self.program.rules :
+            if not r.body : # Database data
+                values.setdefault(r.head.predicate_name,[]).extend([r.head.args])
+            else : 
+                tmp_dict_values = {}
+                var_pred = {} # position of variables in body 
+                for pred in r.body :
+                    tmp_dict_values[pred.predicate_name] = values[pred.predicate_name]
+                    i=0
+                    for arg in pred.args : 
+                        if isinstance(arg,Const):
+                            [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name]),0,-1) if not xor(tmp_dict_values[pred][j][i] == arg,pred.pos)]
+                            # Remove elements not satisfying condition with constant 
+                        else : 
+                            var_pred.setdefault(arg,[]).extend([pred.predicate_name,i,pred.pos]) 
+                        i+=1
+                
+                new_data = {}
+                for var in var_pred.keys():
+                    if not len(var_pred[var]) <= 1 : # if var appears once, do nothing
+                        pred0,i0,pos0 =  var_pred[var][0]
+                        data = tmp_dict_values[pred0]
+                        for l in var_pred[var][1:]:
+                            pred1,i1,pos1 = l
+                            
+
+                    new_data[var] = data
+                values[r.head.predicate_name] = new_data # take into consideration args in head predicate
+
+        return 
+        # TODO index, database relation bordel or not
+
+
 
     def __repr__(self):
         return self.program.__repr__() + "\n? " + self.query.__repr__()
@@ -415,5 +468,5 @@ def get_repr_eq_classes(eq_classes):
         for term in eq_classes[i] :
             dict_repr[str(term)] = repr[i]
 
-            
+
     return dict_repr
