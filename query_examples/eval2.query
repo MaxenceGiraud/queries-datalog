@@ -1,0 +1,16 @@
+M("Director0","Actor0","Movie0").
+M("Director0","Actor1","Movie0").
+M("Director0","Actor0","Movie1").
+M("Director1","Actor0","Movie2").
+M("Director2","Actor2","Movie3").
+P("Theater0","Movie0").
+P("Theater0","Movie1").
+P("Theater0","Movie2").
+P("Theater1","Movie0").
+P("Theater1","Movie2").
+P("Theater2","Movie1").
+T("Theater0","Lille").
+T("Theater1","Lille").
+T("Theater2","Berlin").
+q(M) ← M(D,A,M) P(T,M) T(T,"Lille").
+? q(M)
