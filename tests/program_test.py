@@ -119,24 +119,24 @@ class ProgramTestCase(unittest.TestCase):
         self.assertRaises(Exception,q.sort_rules)
 
     def test_eval_simple(self):
-        file = self.folder_test+"eval0.query"
+        file = self.folder_test+"eval0-simple.query"
         q = queries.query_parse_file(file)
         eval = q.evaluate(unique=True)
         true_ans = [["'Actor0'"], ["'Actor1'"]]
         self.assertListEqual(true_ans,eval)
     
     def test_eval_singlejoint(self):
-        file = self.folder_test+"eval1.query"
+        file = self.folder_test+"eval1-join.query"
         q = queries.query_parse_file(file)
         eval = q.evaluate(unique=True)
         true_ans = [["'Theatre0'"], ["'Theatre1'"], ["'Theatre2'"]]
         self.assertListEqual(true_ans,eval)
     
     def test_eval_doublejoint(self):
-        file = self.folder_test+"eval2.query"
+        file = self.folder_test+"eval2-doublejoin.query"
         q = queries.query_parse_file(file)
         eval = q.evaluate(unique=True)
-        true_ans = [["'Movie0'"], ["'Movie1'"], ["'Movie2'"]]
+        true_ans = [["'Movie1'"]]
         self.assertListEqual(true_ans,eval)
     
     def test_eval_doublejoint_2col(self):

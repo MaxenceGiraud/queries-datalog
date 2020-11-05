@@ -12,5 +12,5 @@ P('Theater2','Movie1').
 T('Theater0','Lille').
 T('Theater1','Lille').
 T('Theater2','Berlin').
-q(M,D) ← M(D,A,M) P(T,M) T(T,'Lille').
-? q(M,D )
+q(M) ← M(D,A,M) P(T,M) T(T,'Berlin').
+? q(M)

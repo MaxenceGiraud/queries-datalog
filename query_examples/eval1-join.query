@@ -9,5 +9,6 @@ P('Theatre0','Movie2').
 P('Theatre1','Movie0').
 P('Theatre1','Movie2').
 P('Theatre2','Movie1').
+P('Theatre3','Movie2').
 q(X) ← P(X,Y)  M('Director0',A,Y).
 ? q(X)
