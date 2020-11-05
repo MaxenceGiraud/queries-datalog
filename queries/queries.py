@@ -437,7 +437,6 @@ class Query:
                             new_diff_vars = [[old[0],old[1],not old[2]] for old in var_pred[d[1]]]
                             var_pred[d[0]].extend(new_diff_vars)
                             del var_pred[d[1]]
-                
                 # Joint
                 for var in var_pred.keys():
                     if not len(var_pred[var]) <= 1 : # if var appears once, do nothing/ keep everything
@@ -446,11 +445,17 @@ class Query:
                             pred1,i1,pos1 = l
 
                             # Actual Joint
-                            for i in range(len(tmp_dict_values[pred0]),0,-1) : 
-                                for j in range(len(tmp_dict_values[pred0]),0,-1) :
-                                    if not (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
-                                        tmp_dict_values[pred0].pop(i)
-                                        tmp_dict_values[pred1].pop(j)                                   
+                            new_table0 = []
+                            new_table1 = []
+                            for i in range(len(tmp_dict_values[pred0])-1,0,-1) : 
+                                for j in range(len(tmp_dict_values[pred1])-1,0,-1) :
+                                    if (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
+                                        new_table0.append(tmp_dict_values[pred0][i])
+                                        new_table1.append(tmp_dict_values[pred1][j])
+                            tmp_dict_values[pred0] = new_table0
+                            tmp_dict_values[pred1] = new_table1
+
+                                             
                 # Answer the query
                 for v in r.head.get_vars():
                     table_ans  =   tmp_dict_values[var_pred[v][0][0]]

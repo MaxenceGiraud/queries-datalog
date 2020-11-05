@@ -127,14 +127,14 @@ class ProgramTestCase(unittest.TestCase):
     def test_eval_singlejoint(self):
         file = self.folder_test+"eval1.query"
         q = queries.query_parse_file(file)
-        eval = list(np.unique(q.evaluate()))
-        self.assertListEqual(["Theatre0","Theatre1","Theatre2"],eval)
+        eval = list(np.unique([str(a) for a in q.evaluate()]))
+        self.assertListEqual(["'Theatre0'","'Theatre1'","'Theatre2'"],eval)
     
     def test_eval_doublejoint(self):
         file = self.folder_test+"eval2.query"
         q = queries.query_parse_file(file)
-        eval = list(np.unique(q.evaluate()))
-        self.assertListEqual(["Movie0","Movie1","Movie2"],eval)
+        eval = list(np.unique([str(a) for a in q.evaluate()]))
+        self.assertListEqual(["'Movie0'","'Movie1'","'Movie2'"],eval)
 
 if __name__ == '__main__':
     unittest.main()
