@@ -146,5 +146,13 @@ class ProgramTestCase(unittest.TestCase):
         true_ans = [["'Movie0'", "'Director0'"],["'Movie1'", "'Director0'"], ["'Movie2'", "'Director1'"]]
         self.assertListEqual(true_ans,eval)
 
+    def test_eval_doublejoint_withdiff(self):
+        file = self.folder_test+"eval4-differentconst.query"
+        q = queries.query_parse_file(file)
+        eval = q.evaluate(unique=True)
+        true_ans = [["'Movie0'", "'Director0'"], ["'Movie2'", "'Director1'"]]
+        self.assertListEqual(true_ans,eval)
+    
+
 if __name__ == '__main__':
     unittest.main()

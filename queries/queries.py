@@ -405,16 +405,14 @@ class Query:
         values = dict()
         for r in self.program.rules:
             if not r.body:  # Store Database data
-                values.setdefault(r.head.predicate_name, []
-                                  ).extend([r.head.args])
+                values.setdefault(r.head.predicate_name, []).extend([r.head.args])
             else:
                 tmp_dict_values = {}
                 var_pred = {}  # position of variables in body
                 diff = []
                 for pred in r.body:
                     if isinstance(pred, Clause):
-                        tmp_dict_values[pred.predicate_name] = copy(
-                            values[pred.predicate_name])
+                        tmp_dict_values[pred.predicate_name] = copy(values[pred.predicate_name])
                         i = 0
                         for arg in pred.args:
                             if isinstance(arg, Const):
@@ -431,33 +429,37 @@ class Query:
                         diff.append(pred.args)
 
                 # Replace the different var negative with the negation of the other one
-                # TODO  deal case when constant in different
                 for d in diff:
-                    if isinstance(d[0],Var) and isinstance(d[1],Var):
+                    if isinstance(d[0], Var) and isinstance(d[1], Var):
                         for var in var_pred.keys():
                             if var == d[1]:
                                 new_diff_vars = [[old[0], old[1], not old[2]]
-                                                for old in var_pred[d[1]]]
+                                                 for old in var_pred[d[1]]]
                                 var_pred[d[0]].extend(new_diff_vars)
                                 del var_pred[d[1]]
-                    elif  isinstance(d[0],Const) and isinstance(d[1],Const):
-                        raise Exception("Different of Two constant is not allowed")
-                    else : 
-                        if isinstance(d[0],Const):
-                            var = d[1] 
-                            constant  = d[0]
-                        else : 
-                            var = d[0] 
-                            constant  = d[1]
-                        
-                        #[tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(    tmp_dict_values[pred.predicate_name])-1, 0, -1) if xor(tmp_dict_values[pred.predicate_name][j][i] == arg, pred.pos) for i in range(len(pred.args) for pred in r.body if isinstance(pred, Clause)]
+                    elif isinstance(d[0], Const) and isinstance(d[1], Const):
+                        raise Exception(
+                            "Different of Two constant is not allowed")
+
+                    # Evaluate constant within different objects
+                    else:
+                        if isinstance(d[0], Const):
+                            var = d[1]
+                            constant = d[0]
+                        else:
+                            var = d[0]
+                            constant = d[1]
+
+                        [[[tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name])-1, -1, -1) if xor(
+                            tmp_dict_values[pred.predicate_name][j][i] != constant, pred.pos)] for i in range(len(pred.args)) if pred.args[i] == var] for pred in r.body if isinstance(pred, Clause)]
+
                 # Joins
                 join_repr = {}
                 join_index = {}
                 for var in var_pred.keys():
                     # if var appears once, do nothing/ keep everything
                     if not len(var_pred[var]) <= 1:
-                        
+
                         pred0, i0, pos0 = var_pred[var][0]
                         if pred0 in join_repr.keys():
                             i0 += join_index[pred0]
@@ -467,27 +469,28 @@ class Query:
 
                             if pred1 in join_repr.keys():
                                 i1 += join_index[pred1]
-                                pred1 = join_repr[pred1]                        
-                           
+                                pred1 = join_repr[pred1]
+
                             # Actual Join
                             new_table = []
                             for i in range(len(tmp_dict_values[pred0])-1, -1, -1):
                                 for j in range(len(tmp_dict_values[pred1])-1, -1, -1):
                                     if (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
-                                        if pred0 == pred1 :
+                                        if pred0 == pred1:
                                             new_table.append(tmp_dict_values[pred0][i])
-                                        else : 
+                                        else:
                                             new_row = copy(tmp_dict_values[pred0][i])
                                             new_row.extend(tmp_dict_values[pred1][j])
                                             new_table.append(new_row)
-                            
-                            if pred0 != pred1 :
+                                            
+                            # Put the representant (the joined table) of the second as the first table
+                            if pred0 != pred1:
                                 join_repr[pred1] = pred0
-                                join_index[pred1] = len(tmp_dict_values[pred0][0])
+                                join_index[pred1] = len(
+                                    tmp_dict_values[pred0][0])
 
                             tmp_dict_values[pred0] = new_table
-                            
-                            
+
                 # Answer the query
                 rule_answer_tmp = []
                 for v in r.head.get_vars():
