@@ -121,20 +121,30 @@ class ProgramTestCase(unittest.TestCase):
     def test_eval_simple(self):
         file = self.folder_test+"eval0.query"
         q = queries.query_parse_file(file)
-        eval = list(np.unique([str(a) for a in q.evaluate()]))
-        self.assertListEqual(["'Actor0'","'Actor1'"],eval)
+        eval = q.evaluate(unique=True)
+        true_ans = [["'Actor0'"], ["'Actor1'"]]
+        self.assertListEqual(true_ans,eval)
     
     def test_eval_singlejoint(self):
         file = self.folder_test+"eval1.query"
         q = queries.query_parse_file(file)
-        eval = list(np.unique([str(a) for a in q.evaluate()]))
-        self.assertListEqual(["'Theatre0'","'Theatre1'","'Theatre2'"],eval)
+        eval = q.evaluate(unique=True)
+        true_ans = [["'Theatre0'"], ["'Theatre1'"], ["'Theatre2'"]]
+        self.assertListEqual(true_ans,eval)
     
     def test_eval_doublejoint(self):
         file = self.folder_test+"eval2.query"
         q = queries.query_parse_file(file)
-        eval = list(np.unique([str(a) for a in q.evaluate()]))
-        self.assertListEqual(["'Movie0'","'Movie1'","'Movie2'"],eval)
+        eval = q.evaluate(unique=True)
+        true_ans = [["'Movie0'"], ["'Movie1'"], ["'Movie2'"]]
+        self.assertListEqual(true_ans,eval)
+    
+    def test_eval_doublejoint_2col(self):
+        file = self.folder_test+"eval3.query"
+        q = queries.query_parse_file(file)
+        eval = q.evaluate(unique=True)
+        true_ans = [["'Movie0'", "'Director0'"],["'Movie1'", "'Director0'"], ["'Movie2'", "'Director1'"]]
+        self.assertListEqual(true_ans,eval)
 
 if __name__ == '__main__':
     unittest.main()

@@ -386,7 +386,7 @@ class Query:
         pred_sorted = self.get_sorted_predicate()
         self.program.rules = [rule for pred in pred_sorted for rule in self.program.rules if pred == rule.head.get_predicate()]
 
-    def evaluate(self):
+    def evaluate(self,unique = False):
         ## Assertion of evaluation possibility
         assert self.is_satisfiable(), "Query is not satisfiable"
         assert self.check_predicate_arity(), "Arity of a predicate is not constant everywhere in the query "
@@ -414,12 +414,6 @@ class Query:
                         for arg in pred.args : 
                             if isinstance(arg,Const):
                                 [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name])-1,0,-1) if xor(tmp_dict_values[pred.predicate_name][j][i] == arg,pred.pos)]
-                                """
-                                for j in range(len(tmp_dict_values[pred.predicate_name]),0,-1) :
-                                    print(j,len(tmp_dict_values[pred.predicate_name]))
-                                    if not xor(tmp_dict_values[pred.predicate_name][j][i] == arg,pred.pos) : 
-                                        tmp_dict_values[pred.predicate_name].pop(j)
-                                        """
                                 #  Remove elements not satisfying condition with constants 
                             else : 
                                 var_pred.setdefault(arg,[]).extend([[pred.predicate_name,i,pred.pos]]) 
@@ -457,15 +451,25 @@ class Query:
 
                                              
                 # Answer the query
+                rule_answer_tmp = []
                 for v in r.head.get_vars():
-                    table_ans  =   tmp_dict_values[var_pred[v][0][0]]
-                    rule_answer = [table_ans[i][var_pred[v][0][1]] for i in range(len(table_ans))]
+                    table  =   tmp_dict_values[var_pred[v][0][0]]
+                    rule_answer_tmp.append([table[i][var_pred[v][0][1]] for i in range(len(table))])
+
+                # Reshape answer
+                rule_answer = []
+                for i in range(len(rule_answer_tmp[0])):
+                    row = []
+                    for j in range(len(rule_answer_tmp)):
+                        row.append(rule_answer_tmp[j][i])
+                    rule_answer.append(row)
+
                 values[r.head.predicate_name] = rule_answer 
 
-        return values[self.query.predicate_name]
-        # TODO index, database relation bordel or not
-
-
+        ans = values[self.query.predicate_name]
+        if unique : 
+            ans = [list(d) for d in np.unique(to_string(ans),axis=0)]
+        return ans
 
     def __repr__(self):
         return self.program.__repr__() + "\n? " + self.query.__repr__()
@@ -504,3 +508,9 @@ def get_repr_eq_classes(eq_classes):
 
 
     return dict_repr
+
+def to_string(list_of_list):
+    for i in range(len(list_of_list)):
+        for j in range(len(list_of_list[i])):
+            list_of_list[i][j] = str(list_of_list[i][j])
+    return list_of_list
