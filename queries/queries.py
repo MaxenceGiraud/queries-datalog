@@ -302,7 +302,7 @@ class Program:
     def is_satisfiable(self):
         '''Check if the program is satisfiable '''
         for r in self.rules :
-            if not r.is_satisfiable():
+            if r.body and not r.is_satisfiable():
                 return False
         return True
 
@@ -400,33 +400,55 @@ class Query:
         # Evalutation
         values = dict()
         for r in self.program.rules :
-            if not r.body : # Database data
+            if not r.body : # Store Database data
                 values.setdefault(r.head.predicate_name,[]).extend([r.head.args])
             else : 
                 tmp_dict_values = {}
                 var_pred = {} # position of variables in body 
+                diff = []
                 for pred in r.body :
-                    tmp_dict_values[pred.predicate_name] = values[pred.predicate_name]
-                    i=0
-                    for arg in pred.args : 
-                        if isinstance(arg,Const):
-                            [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name]),0,-1) if not xor(tmp_dict_values[pred][j][i] == arg,pred.pos)]
-                            # Remove elements not satisfying condition with constant 
-                        else : 
-                            var_pred.setdefault(arg,[]).extend([pred.predicate_name,i,pred.pos]) 
-                        i+=1
+                    if isinstance(pred,Clause):
+                        tmp_dict_values[pred.predicate_name] = values[pred.predicate_name]
+                        i=0
+                        for arg in pred.args : 
+                            if isinstance(arg,Const):
+                                [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name]),0,-1) if not xor(tmp_dict_values[pred][j][i] == arg,pred.pos)]
+                                #  Remove elements not satisfying condition with constants 
+                            else : 
+                                var_pred.setdefault(arg,[]).extend([pred.predicate_name,i,pred.pos]) 
+                                # Store each pos/name/positivity of each Variable 
+                            i+=1
                 
-                new_data = {}
+                    elif isinstance(pred,Different):
+                        diff.append(pred.args)
+
+                # Replace the different var negative with the negation of the other one
+                for d in diff :
+                    for var in var_pred.keys():
+                        if var  == d[1] :
+                            new_diff_vars = [[old[0],old[1],not old[2]] for old in var_pred[d[1]]]
+                            var_pred[d[0]].extend(new_diff_vars)
+                            del var_pred[d[1]]
+                    
+                # Joint
                 for var in var_pred.keys():
-                    if not len(var_pred[var]) <= 1 : # if var appears once, do nothing
+                    if not len(var_pred[var]) <= 1 : # if var appears once, do nothing/ keep everything
                         pred0,i0,pos0 =  var_pred[var][0]
-                        data = tmp_dict_values[pred0]
+                        #data = tmp_dict_values[pred0]
                         for l in var_pred[var][1:]:
                             pred1,i1,pos1 = l
-                            
 
-                    new_data[var] = data
-                values[r.head.predicate_name] = new_data # take into consideration args in head predicate
+                            # Actual Joint
+                            for i in range(len(tmp_dict_values[pred0]),0,-1) : 
+                                for j in range(len(tmp_dict_values[pred0]),0,-1) :
+                                    if not (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
+                                        tmp_dict_values[pred0].pop(i)
+                                        tmp_dict_values[pred1].pop(j)                                   
+                return tmp_dict_values
+                # Answer the query
+                for v in r.head.get_vars():
+                    rule_answer = 0
+                values[r.head.predicate_name] = rule_answer 
 
         return 
         # TODO index, database relation bordel or not
