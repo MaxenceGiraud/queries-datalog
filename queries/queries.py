@@ -159,12 +159,11 @@ class Rule:
 
     def get_eqclasses(self):
         ''' Return all the equivalence classes in the rule'''
-        eq = self.get_body_terms() + [self.head.args]
+        eq = self.get_body_terms() + [[arg] for arg in self.head.args]
 
         for c in self.body :
             if isinstance(c,Equality):
                 eq.append(set([c.left,c.right]))
-
         return union_find(eq)
 
     def create_eqclasses(self):
@@ -394,8 +393,12 @@ class Query:
         assert self.is_rangerestricted(), "The Query is not safe"
 
         # Prepare the query to be evaluated
+        print(self)
         self.remove_equalities()
+        print(self)
         self.sort_rules()
+
+        print(self)
 
         # Evalutation
         values = dict()
@@ -412,10 +415,16 @@ class Query:
                         i=0
                         for arg in pred.args : 
                             if isinstance(arg,Const):
-                                [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name]),0,-1) if not xor(tmp_dict_values[pred][j][i] == arg,pred.pos)]
+                                [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name])-1,0,-1) if not xor(tmp_dict_values[pred.predicate_name][j][i] == arg,pred.pos)]
+                                """
+                                for j in range(len(tmp_dict_values[pred.predicate_name]),0,-1) :
+                                    print(j,len(tmp_dict_values[pred.predicate_name]))
+                                    if not xor(tmp_dict_values[pred.predicate_name][j][i] == arg,pred.pos) : 
+                                        tmp_dict_values[pred.predicate_name].pop(j)
+                                        """
                                 #  Remove elements not satisfying condition with constants 
                             else : 
-                                var_pred.setdefault(arg,[]).extend([pred.predicate_name,i,pred.pos]) 
+                                var_pred.setdefault(arg,[]).extend([[pred.predicate_name,i,pred.pos]]) 
                                 # Store each pos/name/positivity of each Variable 
                             i+=1
                 
@@ -423,18 +432,18 @@ class Query:
                         diff.append(pred.args)
 
                 # Replace the different var negative with the negation of the other one
+                # TODO  deal case when constant in different
                 for d in diff :
                     for var in var_pred.keys():
                         if var  == d[1] :
                             new_diff_vars = [[old[0],old[1],not old[2]] for old in var_pred[d[1]]]
                             var_pred[d[0]].extend(new_diff_vars)
                             del var_pred[d[1]]
-                    
+                
                 # Joint
                 for var in var_pred.keys():
                     if not len(var_pred[var]) <= 1 : # if var appears once, do nothing/ keep everything
                         pred0,i0,pos0 =  var_pred[var][0]
-                        #data = tmp_dict_values[pred0]
                         for l in var_pred[var][1:]:
                             pred1,i1,pos1 = l
 
@@ -444,7 +453,7 @@ class Query:
                                     if not (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
                                         tmp_dict_values[pred0].pop(i)
                                         tmp_dict_values[pred1].pop(j)                                   
-                return tmp_dict_values
+                return tmp_dict_values,values
                 # Answer the query
                 for v in r.head.get_vars():
                     rule_answer = 0
