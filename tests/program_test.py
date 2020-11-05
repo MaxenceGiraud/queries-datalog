@@ -121,8 +121,8 @@ class ProgramTestCase(unittest.TestCase):
     def test_eval_simple(self):
         file = self.folder_test+"eval0.query"
         q = queries.query_parse_file(file)
-        eval = list(np.unique(q.evaluate()))
-        self.assertListEqual(["Actor0","Actor1"],eval)
+        eval = list(np.unique([str(a) for a in q.evaluate()]))
+        self.assertListEqual(["'Actor0'","'Actor1'"],eval)
     
     def test_eval_singlejoint(self):
         file = self.folder_test+"eval1.query"

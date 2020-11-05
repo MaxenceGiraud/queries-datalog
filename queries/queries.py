@@ -2,6 +2,7 @@
 import numpy as np
 from operator import xor
 from itertools import combinations
+from copy import copy
 
 class Any:
     # unnamed variable
@@ -393,12 +394,9 @@ class Query:
         assert self.is_rangerestricted(), "The Query is not safe"
 
         # Prepare the query to be evaluated
-        print(self)
         self.remove_equalities()
-        print(self)
         self.sort_rules()
 
-        print(self)
 
         # Evalutation
         values = dict()
@@ -411,11 +409,11 @@ class Query:
                 diff = []
                 for pred in r.body :
                     if isinstance(pred,Clause):
-                        tmp_dict_values[pred.predicate_name] = values[pred.predicate_name]
+                        tmp_dict_values[pred.predicate_name] = copy(values[pred.predicate_name])
                         i=0
                         for arg in pred.args : 
                             if isinstance(arg,Const):
-                                [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name])-1,0,-1) if not xor(tmp_dict_values[pred.predicate_name][j][i] == arg,pred.pos)]
+                                [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name])-1,0,-1) if xor(tmp_dict_values[pred.predicate_name][j][i] == arg,pred.pos)]
                                 """
                                 for j in range(len(tmp_dict_values[pred.predicate_name]),0,-1) :
                                     print(j,len(tmp_dict_values[pred.predicate_name]))
@@ -453,13 +451,13 @@ class Query:
                                     if not (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
                                         tmp_dict_values[pred0].pop(i)
                                         tmp_dict_values[pred1].pop(j)                                   
-                return tmp_dict_values,values
                 # Answer the query
                 for v in r.head.get_vars():
-                    rule_answer = 0
+                    table_ans  =   tmp_dict_values[var_pred[v][0][0]]
+                    rule_answer = [table_ans[i][var_pred[v][0][1]] for i in range(len(table_ans))]
                 values[r.head.predicate_name] = rule_answer 
 
-        return 
+        return values[self.query.predicate_name]
         # TODO index, database relation bordel or not
 
 
