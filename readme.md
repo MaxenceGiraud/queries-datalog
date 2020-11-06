@@ -1,7 +1,11 @@
-# Implementation: query evaluation
+# Queries
 
-In the two subfolders, you can find a parser that can analyse conjunctive query
-programs. One is written in Haskell, the other in Python. The syntax is as
+## Queries formalism
+### Examples
+A list of queries can be found in the folder [query_exmaples/](./query_examples/)
+
+###  Syntax
+The syntax is as
 follows:
 
 - relation names or constant names have to start with lower case letters and
@@ -31,31 +35,36 @@ follows:
 
 - a query is a program followed by a sentence of this form: ? r(u1,...,un).
 
-Each version of the parser comes with data structures representing the objects
-representing variables, constants, clauses, rules...
+## How to use 
+```{python}
+import queries
 
-The implementations that are asked from you are to be made in one of the
-proposed languages.
+# Load/Parse a query
+q = queries.query_parse_file("query_examples/eval2-doublejoin.query")
 
-For Haskell, the development is using the tool stack. Here compilation is based
-on the command "stack build". 
+# Peforms check on the query 
+q.is_CQ()
+q.is_rangerestricted()
+q.is_satisfiable()
+q.check_no_negate_any()
+q.check_predicate_arity()
 
-The Python implementation relies on the library "lark". It will work once you
-install it: "pip install lark" or "pip3 install lark".
+# Remove equalities (CQE to CQ)
+q.remove_equalities()
 
-## Range restriction
+# Sort the rules in order to evaluate the query
+q.sort_rules()
 
-The first thing you are asked to implement is whether a rule with possibly
-equalities and negation satisfies the /range restriction/ or /safety/ property.
-Check also that equalities do not generate unsatisfiable conditions.
+# Evaluate a query  
+q.evalutate()
+````
+N.B. : The evaluate method already performs the checks and remove equalites, sort rules, no need to call those functions before evaluation. 
 
-Once this is done, also transform such rules so that they do not contain
-equalities anymore.
+### unittest
+to launch unittest :
 
-## Recursivity of programs
-
-Implement an algorithm that checks whether a program is recursive. When given a
-query, use your algorithm so as a to obtain a sequence of predicates you need to
-solve so as to answer the query.
+```{python}
+python -m unittest tests/program_test.py
+````
 
 
