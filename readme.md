@@ -1,8 +1,10 @@
 # Queries
 
+Implementation of datalog queries and their evalutation as part of the Database course taught by Pr. Sylvain Salvati in the M2 Data Science from the University of Lille.
+
 ## Queries formalism
 ### Examples
-A list of queries can be found in the folder [query_exmaples/](./query_examples/)
+A list of queries can be found in the folder [query_examples/](./query_examples/)
 
 ###  Syntax
 The syntax is as

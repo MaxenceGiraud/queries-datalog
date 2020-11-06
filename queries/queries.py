@@ -244,6 +244,117 @@ class Rule:
                         return False
         return True
 
+    def evaluate(self, db):
+        ''' Evaluate rule
+        @param db : dict with data tables 
+        @return db : same dict as input, with rule answer added as a new table
+        '''
+        tmp_dict_values = {}  # tmp tables in order to be able to modify data
+        var_pred = {}  # position of variables in body
+        diff = []
+
+        # First loop which deals with constants and different, and stores Variable locations
+        for pred in self.body:
+            if isinstance(pred, Clause):
+                tmp_dict_values[pred.predicate_name] = copy(
+                    db[pred.predicate_name])
+                i = 0
+                for arg in pred.args:
+                    if isinstance(arg, Const):
+                        [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(
+                            tmp_dict_values[pred.predicate_name])-1, -1, -1) if xor(tmp_dict_values[pred.predicate_name][j][i] == arg, pred.pos)]
+                        #  Remove elements not satisfying condition with constants
+                    else:
+                        var_pred.setdefault(arg, []).extend(
+                            [[pred.predicate_name, i, pred.pos]])
+                        # Store each pos/name/positivity of each Variable
+                    i += 1
+
+            elif isinstance(pred, Different):
+                diff.append(pred.args)
+
+        # Replace the different var negative with the negation of the other one
+        for d in diff:
+            if isinstance(d[0], Var) and isinstance(d[1], Var):
+                for var in var_pred.keys():
+                    if var == d[1]:
+                        new_diff_vars = [[old[0], old[1], not old[2]]
+                                         for old in var_pred[d[1]]]
+                        var_pred[d[0]].extend(new_diff_vars)
+                        del var_pred[d[1]]
+            elif isinstance(d[0], Const) and isinstance(d[1], Const):
+                raise Exception(
+                    "Different of Two constant is not allowed")
+
+            # Evaluate constant within different objects
+            else:
+                if isinstance(d[0], Const):
+                    var = d[1]
+                    constant = d[0]
+                else:
+                    var = d[0]
+                    constant = d[1]
+
+                [[[tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name])-1, -1, -1) if xor(
+                    tmp_dict_values[pred.predicate_name][j][i] != constant, pred.pos)] for i in range(len(pred.args)) if pred.args[i] == var] for pred in self.body if isinstance(pred, Clause)]
+
+        #  Joins using previously stored information
+        join_repr = {}
+        join_index = {}
+        for var in var_pred.keys():
+            # if var appears once, do nothing/ keep everything
+            if not len(var_pred[var]) <= 1:
+
+                pred0, i0, pos0 = var_pred[var][0]
+                if pred0 in join_repr.keys():
+                    i0 += join_index[pred0]
+                    pred0 = join_repr[pred0]
+                for l in var_pred[var][1:]:
+                    pred1, i1, pos1 = l
+
+                    if pred1 in join_repr.keys():
+                        i1 += join_index[pred1]
+                        pred1 = join_repr[pred1]
+
+                    # Actual Join
+                    new_table = []
+                    for i in range(len(tmp_dict_values[pred0])-1, -1, -1):
+                        for j in range(len(tmp_dict_values[pred1])-1, -1, -1):
+                            if (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
+                                if pred0 == pred1:
+                                    new_table.append(tmp_dict_values[pred0][i])
+                                else:
+                                    new_row = copy(tmp_dict_values[pred0][i])
+                                    new_row.extend(tmp_dict_values[pred1][j])
+                                    new_table.append(new_row)
+
+                    # Put the representant (the joined table) of the second as the first table
+                    if pred0 != pred1:
+                        join_repr[pred1] = pred0
+                        join_index[pred1] = len(
+                            tmp_dict_values[pred0][0])
+
+                    tmp_dict_values[pred0] = new_table
+
+        # Answer the query
+        rule_answer_tmp = []
+        for v in self.head.get_vars():
+            table = tmp_dict_values[var_pred[v][0][0]]
+            rule_answer_tmp.append(
+                [table[i][var_pred[v][0][1]] for i in range(len(table))])
+
+        # Reshape answer
+        rule_answer = []
+        for i in range(len(rule_answer_tmp[0])):
+            row = []
+            for j in range(len(rule_answer_tmp)):
+                row.append(rule_answer_tmp[j][i])
+            rule_answer.append(row)
+
+        db[self.head.predicate_name] = rule_answer
+
+        return db
+
     def __repr__(self):
         if self.body == []:
             r = self.head.__repr__()
@@ -386,6 +497,22 @@ class Query:
         self.program.rules = [
             rule for pred in pred_sorted for rule in self.program.rules if pred == rule.head.get_predicate()]
 
+    def get_data(self):
+        '''Get data of a query as a dict (The query has to be sorted)
+        @return db: dict containing tables from query
+        @return idx_end : last rule containing data
+        '''
+        idx_end = 0
+        db = {}
+        for r in self.program.rules:
+            if not r.body:
+                db.setdefault(r.head.predicate_name, []).extend([r.head.args])
+                idx_end += 1
+            else:
+                break
+
+        return db, idx_end
+
     def evaluate(self, unique=False):
         '''Evalute the Query
         @param unique: if true return only unique answers
@@ -401,113 +528,16 @@ class Query:
         self.remove_equalities()
         self.sort_rules()
 
-        # Evalutation
-        values = dict()
-        for r in self.program.rules:
-            if not r.body:  # Store Database data
-                values.setdefault(r.head.predicate_name, []).extend([r.head.args])
-            else:
-                tmp_dict_values = {}
-                var_pred = {}  # position of variables in body
-                diff = []
-                for pred in r.body:
-                    if isinstance(pred, Clause):
-                        tmp_dict_values[pred.predicate_name] = copy(values[pred.predicate_name])
-                        i = 0
-                        for arg in pred.args:
-                            if isinstance(arg, Const):
-                                [tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(
-                                    tmp_dict_values[pred.predicate_name])-1, -1, -1) if xor(tmp_dict_values[pred.predicate_name][j][i] == arg, pred.pos)]
-                                #  Remove elements not satisfying condition with constants
-                            else:
-                                var_pred.setdefault(arg, []).extend(
-                                    [[pred.predicate_name, i, pred.pos]])
-                                # Store each pos/name/positivity of each Variable
-                            i += 1
+        # Retrieving data
+        db, idx_rule_start = self.get_data()
 
-                    elif isinstance(pred, Different):
-                        diff.append(pred.args)
+        # Evaluate each rule
+        for r in self.program.rules[idx_rule_start:]:
+            db = r.evaluate(db)
 
-                # Replace the different var negative with the negation of the other one
-                for d in diff:
-                    if isinstance(d[0], Var) and isinstance(d[1], Var):
-                        for var in var_pred.keys():
-                            if var == d[1]:
-                                new_diff_vars = [[old[0], old[1], not old[2]]
-                                                 for old in var_pred[d[1]]]
-                                var_pred[d[0]].extend(new_diff_vars)
-                                del var_pred[d[1]]
-                    elif isinstance(d[0], Const) and isinstance(d[1], Const):
-                        raise Exception(
-                            "Different of Two constant is not allowed")
-
-                    # Evaluate constant within different objects
-                    else:
-                        if isinstance(d[0], Const):
-                            var = d[1]
-                            constant = d[0]
-                        else:
-                            var = d[0]
-                            constant = d[1]
-
-                        [[[tmp_dict_values[pred.predicate_name].pop(j) for j in range(len(tmp_dict_values[pred.predicate_name])-1, -1, -1) if xor(
-                            tmp_dict_values[pred.predicate_name][j][i] != constant, pred.pos)] for i in range(len(pred.args)) if pred.args[i] == var] for pred in r.body if isinstance(pred, Clause)]
-
-                # Joins
-                join_repr = {}
-                join_index = {}
-                for var in var_pred.keys():
-                    # if var appears once, do nothing/ keep everything
-                    if not len(var_pred[var]) <= 1:
-
-                        pred0, i0, pos0 = var_pred[var][0]
-                        if pred0 in join_repr.keys():
-                            i0 += join_index[pred0]
-                            pred0 = join_repr[pred0]
-                        for l in var_pred[var][1:]:
-                            pred1, i1, pos1 = l
-
-                            if pred1 in join_repr.keys():
-                                i1 += join_index[pred1]
-                                pred1 = join_repr[pred1]
-
-                            # Actual Join
-                            new_table = []
-                            for i in range(len(tmp_dict_values[pred0])-1, -1, -1):
-                                for j in range(len(tmp_dict_values[pred1])-1, -1, -1):
-                                    if (tmp_dict_values[pred0][i][i0] == tmp_dict_values[pred1][j][i1]):
-                                        if pred0 == pred1:
-                                            new_table.append(tmp_dict_values[pred0][i])
-                                        else:
-                                            new_row = copy(tmp_dict_values[pred0][i])
-                                            new_row.extend(tmp_dict_values[pred1][j])
-                                            new_table.append(new_row)
-                                            
-                            # Put the representant (the joined table) of the second as the first table
-                            if pred0 != pred1:
-                                join_repr[pred1] = pred0
-                                join_index[pred1] = len(
-                                    tmp_dict_values[pred0][0])
-
-                            tmp_dict_values[pred0] = new_table
-
-                # Answer the query
-                rule_answer_tmp = []
-                for v in r.head.get_vars():
-                    table = tmp_dict_values[var_pred[v][0][0]]
-                    rule_answer_tmp.append(
-                        [table[i][var_pred[v][0][1]] for i in range(len(table))])
-
-                # Reshape answer
-                rule_answer = []
-                for i in range(len(rule_answer_tmp[0])):
-                    row = []
-                    for j in range(len(rule_answer_tmp)):
-                        row.append(rule_answer_tmp[j][i])
-                    rule_answer.append(row)
-
-                values[r.head.predicate_name] = rule_answer
-        ans = values[self.query.predicate_name]
+        # Answer the query
+        # TODO deal with constant term in query
+        ans = db[self.query.predicate_name]
         if unique:
             ans = [list(d) for d in np.unique(to_string(ans), axis=0)]
         return ans
@@ -517,6 +547,7 @@ class Query:
 
 
 def union_find(lis):
+    '''Perform union find'''
     lis = map(set, lis)
     unions = []
     for item in lis:
@@ -552,6 +583,9 @@ def get_repr_eq_classes(eq_classes):
 
 
 def to_string(list_of_list):
+    ''' Takes a list of list as input and return the same 
+    list of list with each value to str(value)
+    '''
     for i in range(len(list_of_list)):
         for j in range(len(list_of_list[i])):
             list_of_list[i][j] = str(list_of_list[i][j])
