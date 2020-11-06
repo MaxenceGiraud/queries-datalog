@@ -2,7 +2,10 @@ import unittest
 import queries
 import numpy as np
 
-'''Careful : This test file is meant to be run at the root of the project'''
+'''
+Careful : This test file is meant to be run at the root of the project
+
+Command : python3 -m unittest tests/program_test.py'''
 
 class ProgramTestCase(unittest.TestCase):
     def setUp(self):
@@ -12,8 +15,6 @@ class ProgramTestCase(unittest.TestCase):
         file = self.folder_test+"CQnotRR.query"
         iscq = queries.program_parse_file(file)
         self.assertTrue(iscq.is_CQ())
-
-    #def test_isnotCQ(self):
 
     def test_not_rangerestricted(self):
         file = self.folder_test+"CQnotRR.query"
