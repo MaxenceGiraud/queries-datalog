@@ -513,7 +513,7 @@ class Query:
 
         return db, idx_end
 
-    def evaluate(self, unique=False):
+    def evaluate(self, unique=True):
         '''Evalute the Query
         @param unique: if true return only unique answers
         '''
