@@ -1,6 +1,6 @@
 # Queries
 
-Implementation of datalog queries and their evalutation as part of the Database course taught by Pr. Sylvain Salvati in the M2 Data Science from the University of Lille.
+Implementation of datalog queries and their evalutation as part of the Database course taught by [Pr. Sylvain Salvati](https://www.labri.fr/perso/salvati/) in the [M2 Data Science](https://sciences-technologies.univ-lille.fr/mathematiques/formation/master-mention-sciences-des-donnees/) from the University of Lille.
 
 ## Queries formalism
 ### Examples
